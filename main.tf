@@ -157,4 +157,7 @@ resource "aws_instance" "app" {
     network_interface_id = aws_network_interface.app.id
     device_index         = 0
   }
+  tags = {
+    Name = "example-ubuntu"
+  }
 }
