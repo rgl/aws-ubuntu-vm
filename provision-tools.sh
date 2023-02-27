@@ -16,7 +16,7 @@ CHECKPOINT_DISABLE=1 terraform version
 # install aws-cli.
 # download and install.
 # see https://docs.aws.amazon.com/cli/latest/userguide/getting-started-version.html
-AWS_VERSION='2.9.10'
+AWS_VERSION='2.10.3'
 aws_url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_VERSION}.zip"
 t="$(mktemp -q -d --suffix=.aws)"
 wget -qO "$t/awscli.zip" "$aws_url"
