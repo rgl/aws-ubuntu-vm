@@ -16,7 +16,7 @@ terraform {
     # see https://registry.terraform.io/providers/hashicorp/aws
     aws = {
       source  = "hashicorp/aws"
-      version = "4.48.0"
+      version = "4.56.0"
     }
   }
 }
