@@ -39,6 +39,12 @@ Launch the example:
 make terraform-apply
 ```
 
+Show the terraform state:
+
+```bash
+make terraform-show
+```
+
 At VM initialization time [cloud-init](https://cloudinit.readthedocs.io/en/latest/index.html) will run the `provision-app.sh` script to launch the example application.
 
 After VM initialization is done (check the instance system log for cloud-init entries), test the `app` endpoint:
