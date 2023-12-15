@@ -25,6 +25,12 @@ terraform {
 
 provider "aws" {
   region = var.region
+  default_tags {
+    tags = {
+      Project     = "aws-ubuntu-vm"
+      Environment = "test"
+    }
+  }
 }
 
 # get the available locations with: aws ec2 describe-regions | jq -r '.Regions[].RegionName' | sort
