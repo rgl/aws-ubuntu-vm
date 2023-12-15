@@ -1,22 +1,24 @@
 # see https://github.com/hashicorp/terraform
 terraform {
-  required_version = "1.3.9"
+  required_version = "1.6.6"
   required_providers {
     # see https://registry.terraform.io/providers/hashicorp/random
+    # see https://github.com/hashicorp/terraform-provider-random
     random = {
       source  = "hashicorp/random"
-      version = "3.4.3"
+      version = "3.6.0"
     }
-    # see https://registry.terraform.io/providers/hashicorp/template
-    template = {
-      source  = "hashicorp/template"
-      version = "2.2.0"
+    # see https://registry.terraform.io/providers/hashicorp/cloudinit
+    # see https://github.com/hashicorp/terraform-provider-cloudinit
+    cloudinit = {
+      source  = "hashicorp/cloudinit"
+      version = "2.3.3"
     }
-    # see https://github.com/hashicorp/terraform-provider-aws
     # see https://registry.terraform.io/providers/hashicorp/aws
+    # see https://github.com/hashicorp/terraform-provider-aws
     aws = {
       source  = "hashicorp/aws"
-      version = "4.56.0"
+      version = "5.30.0"
     }
   }
 }
@@ -81,7 +83,7 @@ resource "aws_network_interface" "app" {
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip
 resource "aws_eip" "app" {
-  vpc                       = true
+  domain                    = "vpc"
   associate_with_private_ip = aws_network_interface.app.private_ip
   instance                  = aws_instance.app.id
   depends_on                = [aws_internet_gateway.gw]
@@ -125,14 +127,14 @@ resource "aws_security_group" "app" {
   }
 }
 
-# see https://registry.terraform.io/providers/hashicorp/template/latest/docs/data-sources/cloudinit_config.html
+# see https://registry.terraform.io/providers/hashicorp/cloudinit/latest/docs/data-sources/config
 # NB this can be read from the instance-metadata-service.
 #    see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 # NB ANYTHING RUNNING IN THE VM CAN READ THIS DATA FROM THE INSTANCE-METADATA-SERVICE.
 # NB cloud-init executes **all** these parts regardless of their result. they
 #    should be idempotent.
 # NB the output is saved at /var/log/cloud-init-output.log
-data "template_cloudinit_config" "app" {
+data "cloudinit_config" "app" {
   part {
     content_type = "text/cloud-config"
     content      = <<-EOF
@@ -152,7 +154,7 @@ resource "aws_instance" "app" {
   ami              = data.aws_ami.ubuntu.id
   instance_type    = "t2.micro"
   key_name         = aws_key_pair.admin.key_name
-  user_data_base64 = data.template_cloudinit_config.app.rendered
+  user_data_base64 = data.cloudinit_config.app.rendered
   network_interface {
     network_interface_id = aws_network_interface.app.id
     device_index         = 0

@@ -6,7 +6,7 @@ sudo apt-get install -y apt-transport-https make unzip jq
 
 # install terraform.
 # see https://www.terraform.io/downloads.html
-artifact_url=https://releases.hashicorp.com/terraform/1.3.9/terraform_1.3.9_linux_amd64.zip
+artifact_url=https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
 artifact_path="/tmp/$(basename $artifact_url)"
 wget -qO $artifact_path $artifact_url
 sudo unzip -o $artifact_path -d /usr/local/bin
@@ -16,7 +16,7 @@ CHECKPOINT_DISABLE=1 terraform version
 # install aws-cli.
 # download and install.
 # see https://docs.aws.amazon.com/cli/latest/userguide/getting-started-version.html
-AWS_VERSION='2.10.3'
+AWS_VERSION='2.14.6'
 aws_url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_VERSION}.zip"
 t="$(mktemp -q -d --suffix=.aws)"
 wget -qO "$t/awscli.zip" "$aws_url"
