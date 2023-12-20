@@ -29,8 +29,9 @@ adduser \
 install -d -o root -g app -m 750 /opt/app
 
 # create an example http server and run it as a systemd service.
-cat >/opt/app/main.js <<EOF
-const http = require("http");
+pushd /opt/app
+cat >main.js <<EOF
+import http from "http";
 
 function createRequestListener(instanceId) {
     return (request, response) => {
@@ -55,21 +56,25 @@ function main(instanceId, port) {
 }
 
 // see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
-http.get(
-    "http://169.254.169.254/latest/meta-data/instance-id",
-    {
+// see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-v2-how-it-works.html
+async function getInstanceId() {
+    const tokenResponse = await fetch("http://169.254.169.254/latest/api/token", {
+        method: "PUT",
         headers: {
+            "X-aws-ec2-metadata-token-ttl-seconds": 30,
         }
-    },
-    (response) => {
-        let data = "";
-        response.on("data", (chunk) => data += chunk);
-        response.on("end", () => {
-            const instanceId = data;
-            main(instanceId, process.argv[2]);
-        });
-    }
-).on("error", (error) => console.log("Error fetching metadata: " + error.message));
+    });
+    const token = await tokenResponse.text();
+    const instanceIdResponse = await fetch("http://169.254.169.254/latest/meta-data/instance-id", {
+        headers: {
+            "X-aws-ec2-metadata-token": token,
+        }
+    });
+    const instanceId = await instanceIdResponse.text();
+    return instanceId;
+}
+
+main(await getInstanceId(), process.argv[2]);
 EOF
 cat >package.json <<'EOF'
 {
@@ -77,11 +82,13 @@ cat >package.json <<'EOF'
     "description": "example application",
     "version": "1.0.0",
     "license": "MIT",
+    "type": "module",
     "main": "main.js",
     "dependencies": {}
 }
 EOF
 npm install
+popd
 
 # launch the app.
 cat >/etc/systemd/system/app.service <<EOF

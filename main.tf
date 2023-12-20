@@ -161,6 +161,10 @@ resource "aws_instance" "app" {
   instance_type    = "t2.micro"
   key_name         = aws_key_pair.admin.key_name
   user_data_base64 = data.cloudinit_config.app.rendered
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
   network_interface {
     network_interface_id = aws_network_interface.app.id
     device_index         = 0

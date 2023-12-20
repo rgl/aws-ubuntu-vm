@@ -77,6 +77,8 @@ And open a shell inside the VM:
 ssh "ubuntu@$(terraform output --raw app_ip_address)"
 cloud-init status --wait
 tail /var/log/cloud-init-output.log
+systemctl status app
+journalctl -u app
 exit
 ```
 
@@ -94,6 +96,8 @@ make terraform-destroy
 * [AWS General Reference](https://docs.aws.amazon.com/general/latest/gr/Welcome.html)
   * [Amazon Resource Names (ARNs)](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)
 * [Connect to the internet using an internet gateway](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html#vpc-igw-internet-access)
+* [Retrieve instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html)
+* [How Instance Metadata Service Version 2 works](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-v2-how-it-works.html)
 
 # Alternatives
 
