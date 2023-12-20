@@ -1,5 +1,7 @@
 # About
 
+[![Lint](https://github.com/rgl/aws-ubuntu-vm/actions/workflows/lint.yml/badge.svg)](https://github.com/rgl/aws-ubuntu-vm/actions/workflows/lint.yml)
+
 An example aws ec2 ubuntu virtual machine.
 
 # Usage (on a Ubuntu Desktop)
