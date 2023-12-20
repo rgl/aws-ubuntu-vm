@@ -35,11 +35,14 @@ provider "aws" {
 
 # get the available locations with: aws ec2 describe-regions | jq -r '.Regions[].RegionName' | sort
 variable "region" {
+  type    = string
   default = "eu-west-1"
 }
 
 # NB when you run make terraform-apply this is set from the TF_VAR_admin_ssh_key_data environment variable, which comes from the ~/.ssh/id_rsa.pub file.
-variable "admin_ssh_key_data" {}
+variable "admin_ssh_key_data" {
+  type = string
+}
 
 output "app_ip_address" {
   value = aws_eip.app.public_ip
