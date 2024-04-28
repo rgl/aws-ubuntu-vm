@@ -114,6 +114,7 @@ resource "aws_route_table_association" "public" {
 }
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group
+# NB the guest firewall is also configured by provision-firewall.sh.
 resource "aws_security_group" "app" {
   vpc_id = aws_vpc.example.id
   ingress {
@@ -139,7 +140,8 @@ resource "aws_security_group" "app" {
 # see https://registry.terraform.io/providers/hashicorp/cloudinit/latest/docs/data-sources/config
 # NB this can be read from the instance-metadata-service.
 #    see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
-# NB ANYTHING RUNNING IN THE VM CAN READ THIS DATA FROM THE INSTANCE-METADATA-SERVICE.
+# NB ANYTHING RUNNING IN THE VM CAN READ THIS DATA FROM THE INSTANCE-METADATA-SERVICE
+#    UNLESS the firewall limits the access, like we do in provision-firewall.sh.
 # NB cloud-init executes **all** these parts regardless of their result. they
 #    should be idempotent.
 # NB the output is saved at /var/log/cloud-init-output.log
@@ -151,6 +153,10 @@ data "cloudinit_config" "app" {
     runcmd:
       - echo 'Hello from cloud-config runcmd!'
     EOF
+  }
+  part {
+    content_type = "text/x-shellscript"
+    content      = file("provision-firewall.sh")
   }
   part {
     content_type = "text/x-shellscript"

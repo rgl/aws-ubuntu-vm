@@ -28,6 +28,9 @@ adduser \
     app
 install -d -o root -g app -m 750 /opt/app
 
+# add the app user to the imds group to allow it to access the imds ip address.
+usermod --append --groups imds app
+
 # create an example http server and run it as a systemd service.
 pushd /opt/app
 cat >main.js <<EOF
