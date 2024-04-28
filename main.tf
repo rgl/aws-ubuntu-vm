@@ -161,7 +161,7 @@ data "cloudinit_config" "app" {
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance
 resource "aws_instance" "app" {
   ami              = data.aws_ami.ubuntu.id
-  instance_type    = "t2.micro"
+  instance_type    = "t3.micro" # 2 cpu. 1 GiB RAM. Nitro System. see https://aws.amazon.com/ec2/instance-types/t3/
   key_name         = aws_key_pair.admin.key_name
   user_data_base64 = data.cloudinit_config.app.rendered
   metadata_options {
