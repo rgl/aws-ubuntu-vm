@@ -35,14 +35,20 @@ usermod --append --groups imds app
 pushd /opt/app
 cat >main.js <<EOF
 import http from "http";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
 function createRequestListener(instanceIdentity) {
-    return (request, response) => {
+    return async (request, response) => {
+        const instanceCredentials = await getInstanceCredentials();
+        const instanceRoleMessageParameter = await getInstanceRoleParameter(instanceIdentity.region, instanceCredentials.role, "message");
         const serverAddress = \`\${request.socket.localAddress}:\${request.socket.localPort}\`;
         const clientAddress = \`\${request.socket.remoteAddress}:\${request.socket.remotePort}\`;
         const message = \`Instance ID: \${instanceIdentity.instanceId}
 Instance Image ID: \${instanceIdentity.imageId}
 Instance Region: \${instanceIdentity.region}
+Instance Role: \${instanceCredentials.role}
+Instance Role Message Parameter: \${instanceRoleMessageParameter}
+Instance Credentials Expire At: \${instanceCredentials.credentials.Expiration}
 Node.js Version: \${process.versions.node}
 Server Address: \${serverAddress}
 Client Address: \${clientAddress}
@@ -58,6 +64,53 @@ Request URL: \${request.url}
 function main(instanceIdentity, port) {
     const server = http.createServer(createRequestListener(instanceIdentity));
     server.listen(port);
+}
+
+// see https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/ssm/command/GetParameterCommand/
+async function getInstanceRoleParameter(region, instanceRole, parameterName) {
+    const client = new SSMClient({
+        region: region,
+    });
+    const response = await client.send(new GetParameterCommand({
+        Name: \`/\${instanceRole}/\${parameterName}\`,
+    }));
+    return response.Parameter.Value;
+}
+
+// see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials
+async function getInstanceCredentials() {
+    const tokenResponse = await fetch("http://169.254.169.254/latest/api/token", {
+        method: "PUT",
+        headers: {
+            "X-aws-ec2-metadata-token-ttl-seconds": 30,
+        }
+    });
+    if (!tokenResponse.ok) {
+        throw new Error(\`Failed to fetch instance token: \${tokenResponse.status} \${tokenResponse.statusText}\`);
+    }
+    const token = await tokenResponse.text();
+    const instanceRoleResponse = await fetch(\`http://169.254.169.254/latest/meta-data/iam/security-credentials\`, {
+        headers: {
+            "X-aws-ec2-metadata-token": token,
+        }
+    });
+    if (!instanceRoleResponse.ok) {
+        throw new Error(\`Failed to fetch instance role: \${instanceRoleResponse.status} \${instanceRoleResponse.statusText}\`);
+    }
+    const instanceRole = (await instanceRoleResponse.text()).trim();
+    const instanceCredentialsResponse = await fetch(\`http://169.254.169.254/latest/meta-data/iam/security-credentials/\${instanceRole}\`, {
+        headers: {
+            "X-aws-ec2-metadata-token": token,
+        }
+    });
+    if (!instanceCredentialsResponse.ok) {
+        throw new Error(\`Failed to fetch \${instanceRole} instance role credentials: \${instanceCredentialsResponse.status} \${instanceCredentialsResponse.statusText}\`);
+    }
+    const instanceCredentials = await instanceCredentialsResponse.json();
+    return {
+        role: instanceRole,
+        credentials: instanceCredentials,
+    };
 }
 
 // see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html
@@ -96,7 +149,9 @@ cat >package.json <<'EOF'
     "license": "MIT",
     "type": "module",
     "main": "main.js",
-    "dependencies": {}
+    "dependencies": {
+        "@aws-sdk/client-ssm": "3.564.0"
+    }
 }
 EOF
 npm install

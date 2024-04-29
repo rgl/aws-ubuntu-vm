@@ -39,6 +39,11 @@ variable "region" {
   default = "eu-west-1"
 }
 
+variable "name_prefix" {
+  type    = string
+  default = "rgl-aws-ubuntu-vm"
+}
+
 # NB when you run make terraform-apply this is set from the TF_VAR_admin_ssh_key_data environment variable, which comes from the ~/.ssh/id_rsa.pub file.
 variable "admin_ssh_key_data" {
   type = string
@@ -48,7 +53,11 @@ output "app_ip_address" {
   value = aws_eip.app.public_ip
 }
 
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity
+data "aws_caller_identity" "current" {}
+
 # also see https://cloud-images.ubuntu.com/locator/ec2/
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"] # Canonical.
@@ -137,6 +146,65 @@ resource "aws_security_group" "app" {
   }
 }
 
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
+resource "aws_iam_role" "app" {
+  name = "${var.name_prefix}-app"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment
+resource "aws_iam_role_policy_attachment" "app" {
+  role       = aws_iam_role.app.name
+  policy_arn = aws_iam_policy.app.arn
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy
+resource "aws_iam_policy" "app" {
+  name = "${var.name_prefix}-app"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:GetParameters",
+          "ssm:GetParameter",
+        ]
+        Resource = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${aws_iam_instance_profile.app.role}/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:DescribeParameters"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_instance_profile
+resource "aws_iam_instance_profile" "app" {
+  name = "${var.name_prefix}-app"
+  role = aws_iam_role.app.name
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter
+resource "aws_ssm_parameter" "app_message" {
+  name  = "/${aws_iam_instance_profile.app.role}/message"
+  type  = "String"
+  value = "Hello, World!"
+}
+
 # see https://registry.terraform.io/providers/hashicorp/cloudinit/latest/docs/data-sources/config
 # NB this can be read from the instance-metadata-service.
 #    see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
@@ -166,10 +234,11 @@ data "cloudinit_config" "app" {
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance
 resource "aws_instance" "app" {
-  ami              = data.aws_ami.ubuntu.id
-  instance_type    = "t3.micro" # 2 cpu. 1 GiB RAM. Nitro System. see https://aws.amazon.com/ec2/instance-types/t3/
-  key_name         = aws_key_pair.admin.key_name
-  user_data_base64 = data.cloudinit_config.app.rendered
+  ami                  = data.aws_ami.ubuntu.id
+  instance_type        = "t3.micro" # 2 cpu. 1 GiB RAM. Nitro System. see https://aws.amazon.com/ec2/instance-types/t3/
+  iam_instance_profile = aws_iam_instance_profile.app.name
+  key_name             = aws_key_pair.admin.key_name
+  user_data_base64     = data.cloudinit_config.app.rendered
   metadata_options {
     http_endpoint = "enabled"
     http_tokens   = "required"

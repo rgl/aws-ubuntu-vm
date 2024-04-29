@@ -8,11 +8,17 @@ This will:
 
 * Create a VPC.
   * Configure a Internet Gateway.
+* Create a Systems Manager ([aka SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html#service-naming-history)) Parameter.
 * Create a EC2 Instance.
   * Assign a Public IP address.
+  * Assign a IAM Role.
+    * Include the [AmazonSSMManagedInstanceCore Policy](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonSSMManagedInstanceCore.html).
   * Initialize with cloud-init.
+    * Configure the guest firewall.
     * Install a example application.
       * Get the [Instance Identity Document](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html) from the [EC2 Instance Metadata Service](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html).
+      * Get a Parameter from the [Systems Manager Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html).
+      * Get the [Instance (IAM) Role Credentials](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials).
 
 # Usage (on a Ubuntu Desktop)
 
@@ -92,6 +98,10 @@ tail /var/log/cloud-init-output.log
 wget -qO- localhost/try
 systemctl status app
 journalctl -u app
+systemctl status snap.amazon-ssm-agent.amazon-ssm-agent
+journalctl -u snap.amazon-ssm-agent.amazon-ssm-agent
+sudo ssm-cli get-instance-information
+sudo ssm-cli get-diagnostics
 exit
 ```
 
@@ -111,6 +121,8 @@ make terraform-destroy
 * [Connect to the internet using an internet gateway](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html#vpc-igw-internet-access)
 * [Retrieve instance metadata](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html)
 * [How Instance Metadata Service Version 2 works](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-v2-how-it-works.html)
+* [AWS Systems Manager (aka Amazon EC2 Simple Systems Manager (SSM))](https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html)
+  * [Amazon SSM Agent Source Code Repository](https://github.com/aws/amazon-ssm-agent)
 
 # Alternatives
 
