@@ -36,11 +36,13 @@ pushd /opt/app
 cat >main.js <<EOF
 import http from "http";
 
-function createRequestListener(instanceId) {
+function createRequestListener(instanceIdentity) {
     return (request, response) => {
         const serverAddress = \`\${request.socket.localAddress}:\${request.socket.localPort}\`;
         const clientAddress = \`\${request.socket.remoteAddress}:\${request.socket.remotePort}\`;
-        const message = \`Instance ID: \${instanceId}
+        const message = \`Instance ID: \${instanceIdentity.instanceId}
+Instance Image ID: \${instanceIdentity.imageId}
+Instance Region: \${instanceIdentity.region}
 Node.js Version: \${process.versions.node}
 Server Address: \${serverAddress}
 Client Address: \${clientAddress}
@@ -53,31 +55,38 @@ Request URL: \${request.url}
     };
 }
 
-function main(instanceId, port) {
-    const server = http.createServer(createRequestListener(instanceId));
+function main(instanceIdentity, port) {
+    const server = http.createServer(createRequestListener(instanceIdentity));
     server.listen(port);
 }
 
+// see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html
 // see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
 // see https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-v2-how-it-works.html
-async function getInstanceId() {
+async function getInstanceIdentity() {
     const tokenResponse = await fetch("http://169.254.169.254/latest/api/token", {
         method: "PUT",
         headers: {
             "X-aws-ec2-metadata-token-ttl-seconds": 30,
         }
     });
+    if (!tokenResponse.ok) {
+        throw new Error(\`Failed to fetch instance token: \${tokenResponse.status} \${tokenResponse.statusText}\`);
+    }
     const token = await tokenResponse.text();
-    const instanceIdResponse = await fetch("http://169.254.169.254/latest/meta-data/instance-id", {
+    const instanceIdentityResponse = await fetch("http://169.254.169.254/latest/dynamic/instance-identity/document", {
         headers: {
             "X-aws-ec2-metadata-token": token,
         }
     });
-    const instanceId = await instanceIdResponse.text();
-    return instanceId;
+    if (!instanceIdentityResponse.ok) {
+        throw new Error(\`Failed to fetch instance metadata: \${instanceIdentityResponse.status} \${instanceIdentityResponse.statusText}\`);
+    }
+    const instanceIdentity = await instanceIdentityResponse.json();
+    return instanceIdentity;
 }
 
-main(await getInstanceId(), process.argv[2]);
+main(await getInstanceIdentity(), process.argv[2]);
 EOF
 cat >package.json <<'EOF'
 {
@@ -96,7 +105,7 @@ popd
 # launch the app.
 cat >/etc/systemd/system/app.service <<EOF
 [Unit]
-Description=Example Azure Web Application
+Description=Example Web Application
 After=network.target
 
 [Service]

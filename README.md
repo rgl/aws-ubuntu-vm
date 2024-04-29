@@ -4,6 +4,16 @@
 
 An example Ubuntu VM running in a AWS EC2 Instance.
 
+This will:
+
+* Create a VPC.
+  * Configure a Internet Gateway.
+* Create a EC2 Instance.
+  * Assign a Public IP address.
+  * Initialize with cloud-init.
+    * Install a example application.
+      * Get the [Instance Identity Document](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html) from the [EC2 Instance Metadata Service](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html).
+
 # Usage (on a Ubuntu Desktop)
 
 Install the tools:
@@ -79,6 +89,7 @@ And open a shell inside the VM:
 ssh "ubuntu@$(terraform output --raw app_ip_address)"
 cloud-init status --wait
 tail /var/log/cloud-init-output.log
+wget -qO- localhost/try
 systemctl status app
 journalctl -u app
 exit
