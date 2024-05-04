@@ -1,58 +1,3 @@
-# see https://github.com/hashicorp/terraform
-terraform {
-  required_version = "1.8.2"
-  required_providers {
-    # see https://registry.terraform.io/providers/hashicorp/random
-    # see https://github.com/hashicorp/terraform-provider-random
-    random = {
-      source  = "hashicorp/random"
-      version = "3.6.1"
-    }
-    # see https://registry.terraform.io/providers/hashicorp/cloudinit
-    # see https://github.com/hashicorp/terraform-provider-cloudinit
-    cloudinit = {
-      source  = "hashicorp/cloudinit"
-      version = "2.3.4"
-    }
-    # see https://registry.terraform.io/providers/hashicorp/aws
-    # see https://github.com/hashicorp/terraform-provider-aws
-    aws = {
-      source  = "hashicorp/aws"
-      version = "5.47.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.region
-  default_tags {
-    tags = {
-      Project     = "aws-ubuntu-vm"
-      Environment = "test"
-    }
-  }
-}
-
-# get the available locations with: aws ec2 describe-regions | jq -r '.Regions[].RegionName' | sort
-variable "region" {
-  type    = string
-  default = "eu-west-1"
-}
-
-variable "name_prefix" {
-  type    = string
-  default = "rgl-aws-ubuntu-vm"
-}
-
-# NB when you run make terraform-apply this is set from the TF_VAR_admin_ssh_key_data environment variable, which comes from the ~/.ssh/id_rsa.pub file.
-variable "admin_ssh_key_data" {
-  type = string
-}
-
-output "app_ip_address" {
-  value = aws_eip.app.public_ip
-}
-
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity
 data "aws_caller_identity" "current" {}
 
@@ -73,30 +18,18 @@ data "aws_ami" "ubuntu" {
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/key_pair
 resource "aws_key_pair" "admin" {
+  key_name   = "${var.name_prefix}-app-admin"
   public_key = var.admin_ssh_key_data
-}
-
-# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway
-resource "aws_internet_gateway" "gw" {
-  vpc_id = aws_vpc.example.id
-}
-
-# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc
-resource "aws_vpc" "example" {
-  cidr_block = "10.1.0.0/16"
-}
-
-# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet
-resource "aws_subnet" "public" {
-  vpc_id     = aws_vpc.example.id
-  cidr_block = "10.1.1.0/24"
 }
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/network_interface
 resource "aws_network_interface" "app" {
-  subnet_id       = aws_subnet.public.id
-  private_ips     = ["10.1.1.4"]
+  subnet_id       = aws_subnet.public_az_a.id
+  private_ips     = [local.vpc_public_az_a_subnet_app_ip_address]
   security_groups = [aws_security_group.app.id]
+  tags = {
+    Name = "${var.name_prefix}-app"
+  }
 }
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip
@@ -104,45 +37,54 @@ resource "aws_eip" "app" {
   domain                    = "vpc"
   associate_with_private_ip = aws_network_interface.app.private_ip
   instance                  = aws_instance.app.id
-  depends_on                = [aws_internet_gateway.gw]
-}
-
-# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.example.id
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.gw.id
+  depends_on                = [aws_internet_gateway.main]
+  tags = {
+    Name = "${var.name_prefix}-app"
   }
 }
 
-# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public.id
-}
-
-# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group
 # NB the guest firewall is also configured by provision-firewall.sh.
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group
 resource "aws_security_group" "app" {
-  vpc_id = aws_vpc.example.id
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  vpc_id      = aws_vpc.example.id
+  name        = "app"
+  description = "Application"
+  tags = {
+    Name = "${var.name_prefix}-app"
   }
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule
+resource "aws_vpc_security_group_ingress_rule" "app_ssh" {
+  security_group_id = aws_security_group.app.id
+  ip_protocol       = "tcp"
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 22
+  to_port           = 22
+  tags = {
+    Name = "${var.name_prefix}-app-ssh"
   }
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule
+resource "aws_vpc_security_group_ingress_rule" "app_http" {
+  security_group_id = aws_security_group.app.id
+  ip_protocol       = "tcp"
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  tags = {
+    Name = "${var.name_prefix}-app-http"
+  }
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_egress_rule
+resource "aws_vpc_security_group_egress_rule" "app_all" {
+  security_group_id = aws_security_group.app.id
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
+  tags = {
+    Name = "${var.name_prefix}-app-all"
   }
 }
 

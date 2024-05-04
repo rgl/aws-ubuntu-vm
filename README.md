@@ -72,6 +72,7 @@ make terraform-init
 Launch the example:
 
 ```bash
+rm -f terraform.log
 make terraform-apply
 ```
 
@@ -86,7 +87,7 @@ At VM initialization time [cloud-init](https://cloudinit.readthedocs.io/en/lates
 After VM initialization is done (check the instance system log for cloud-init entries), test the `app` endpoint:
 
 ```bash
-wget -qO- "http://$(terraform output --raw app_ip_address)/test"
+while ! wget -qO- "http://$(terraform output --raw app_ip_address)/test"; do sleep 3; done
 ```
 
 And open a shell inside the VM:
@@ -98,6 +99,9 @@ tail /var/log/cloud-init-output.log
 wget -qO- localhost/try
 systemctl status app
 journalctl -u app
+sudo iptables-save
+sudo ip6tables-save
+sudo ec2metadata
 systemctl status snap.amazon-ssm-agent.amazon-ssm-agent
 journalctl -u snap.amazon-ssm-agent.amazon-ssm-agent
 sudo ssm-cli get-instance-information

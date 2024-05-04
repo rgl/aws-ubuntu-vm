@@ -180,5 +180,4 @@ systemctl enable app
 systemctl start app
 
 # try it.
-sleep .2
-wget -qO- localhost/try
+while ! wget -qO- http://localhost/try; do sleep 3; done
