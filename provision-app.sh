@@ -141,7 +141,10 @@ async function getInstanceIdentity() {
 
 main(await getInstanceIdentity(), process.argv[2]);
 EOF
-cat >package.json <<'EOF'
+# see https://www.npmjs.com/package/@aws-sdk/client-ssm
+# renovate: datasource=npm depName=@aws-sdk/client-ssm
+npm_aws_sdk_client_ssm_version='3.574.0'
+cat >package.json <<EOF
 {
     "name": "app",
     "description": "example application",
@@ -150,7 +153,7 @@ cat >package.json <<'EOF'
     "type": "module",
     "main": "main.js",
     "dependencies": {
-        "@aws-sdk/client-ssm": "3.564.0"
+        "@aws-sdk/client-ssm": "$npm_aws_sdk_client_ssm_version"
     }
 }
 EOF
