@@ -149,7 +149,7 @@ After VM initialization is done (check the instance system log for cloud-init en
 while ! wget -qO- "http://$(terraform output --raw app_ip_address)/test"; do sleep 3; done
 ```
 
-Get the instance sshd public keys, convert them to the knowns hosts format,
+Get the instance ssh host public keys, convert them to the knowns hosts format,
 and show their fingerprints:
 
 ```bash
@@ -157,12 +157,12 @@ and show their fingerprints:
   "$(terraform output --raw app_instance_id)" \
   | tail -1 \
   | jq -r .sshd_public_keys \
-  | sed "s/^/$(terraform output --raw app_ip_address) /" \
+  | sed "s/^/$(terraform output --raw app_instance_id),$(terraform output --raw app_ip_address) /" \
   > app-ssh-known-hosts.txt
 ssh-keygen -l -f app-ssh-known-hosts.txt
 ```
 
-Open a shell inside the VM and execute some commands:
+Using your ssh client, open a shell inside the VM and execute some commands:
 
 ```bash
 ssh \
@@ -186,6 +186,58 @@ sudo ssm-cli get-diagnostics
 exit
 ```
 
+Using your ssh client, and [aws ssm session manager to proxy the ssh connection](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html), open a shell inside the VM and execute some commands:
+
+```bash
+ssh \
+  -o UserKnownHostsFile=app-ssh-known-hosts.txt \
+  -o ProxyCommand='aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p' \
+  "ubuntu@$(terraform output --raw app_instance_id)"
+ps -efww --forest
+sudo ps -efww --forest
+exit
+```
+
+Using [aws ssm session manager](https://docs.aws.amazon.com/cli/latest/reference/ssm/start-session.html), open a `sh` shell inside the VM and execute some commands:
+
+```bash
+# NB this executes the command inside a sh shell. to switch to a different one,
+#    see the next example.
+# NB the default ssm session --document-name is SSM-SessionManagerRunShell.
+#    NB that document is created in our account when session manager is used
+#       for the first time.
+# see https://docs.aws.amazon.com/systems-manager/latest/userguide/getting-started-default-session-document.html
+# see aws ssm describe-document --name SSM-SessionManagerRunShell
+aws ssm start-session --target "$(terraform output --raw app_instance_id)"
+echo $SHELL
+id
+sudo id
+ps -efww --forest
+sudo ps -efww --forest
+exit
+```
+
+Using [aws ssm session manager](https://docs.aws.amazon.com/cli/latest/reference/ssm/start-session.html), open a `bash` shell inside the VM and execute some commands:
+
+```bash
+# NB this executes the command inside a sh shell, but we immediately switch to
+#    the bash shell.
+# NB the default ssm session --document-name is SSM-SessionManagerRunShell which
+#    is created in our account when session manager is used the first time.
+# see aws ssm describe-document --name AWS-StartInteractiveCommand --query 'Document.Parameters[*]'
+# see aws ssm describe-document --name AWS-StartNonInteractiveCommand --query 'Document.Parameters[*]'
+aws ssm start-session \
+  --document-name AWS-StartInteractiveCommand \
+  --parameters '{"command":["exec env SHELL=$(which bash) bash -il"]}' \
+  --target "$(terraform output --raw app_instance_id)"
+echo $SHELL
+id
+sudo id
+ps -efww --forest
+sudo ps -efww --forest
+exit
+```
+
 Destroy the example:
 
 ```bash
@@ -204,6 +256,13 @@ make terraform-destroy
 * [How Instance Metadata Service Version 2 works](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-metadata-v2-how-it-works.html)
 * [AWS Systems Manager (aka Amazon EC2 Simple Systems Manager (SSM))](https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html)
   * [Amazon SSM Agent Source Code Repository](https://github.com/aws/amazon-ssm-agent)
+  * [Amazon SSM Session Manager Plugin Source Code Repository](https://github.com/aws/session-manager-plugin)
+  * [AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html)
+    * [Start a session](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html)
+      * [Starting a session (AWS CLI)](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html#sessions-start-cli)
+      * [Starting a session (SSH)](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html#sessions-start-ssh)
+        * [Allow and control permissions for SSH connections through Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
+      * [Starting a session (port forwarding)](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html#sessions-start-port-forwarding)
 
 # Alternatives
 

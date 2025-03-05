@@ -16,8 +16,7 @@ sudo unzip -o $artifact_path -d /usr/local/bin
 rm $artifact_path
 CHECKPOINT_DISABLE=1 terraform version
 
-# install aws-cli.
-# download and install.
+# install aws cli.
 # see https://docs.aws.amazon.com/cli/latest/userguide/getting-started-version.html
 # see https://github.com/aws/aws-cli/tags
 # see https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html#cliv2-linux-install
@@ -33,3 +32,15 @@ unzip "$t/awscli.zip" -d "$t"
     --update
 rm -rf "$t"
 aws --version
+
+# install aws cli session manager plugin.
+# see https://github.com/aws/session-manager-plugin/releases
+# see https://docs.aws.amazon.com/systems-manager/latest/userguide/install-plugin-debian-and-ubuntu.html
+# renovate: datasource=github-releases depName=aws/session-manager-plugin
+AWS_SESSION_MANAGER_PLUGIN_VERSION='1.2.707.0'
+aws_session_manager_plugin_url="https://s3.amazonaws.com/session-manager-downloads/plugin/$AWS_SESSION_MANAGER_PLUGIN_VERSION/ubuntu_64bit/session-manager-plugin.deb"
+t="$(mktemp -q -d --suffix=.aws-session-manager-plugin)"
+wget -qO "$t/session-manager-plugin.deb" "$aws_session_manager_plugin_url"
+sudo dpkg -i "$t/session-manager-plugin.deb"
+rm -rf "$t"
+session-manager-plugin --version
