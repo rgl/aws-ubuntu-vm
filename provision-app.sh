@@ -3,7 +3,7 @@ set -euxo pipefail
 
 # install node LTS.
 # see https://github.com/nodesource/distributions#debinstall
-NODE_MAJOR_VERSION=20
+NODE_MAJOR_VERSION=22
 apt-get update
 apt-get install -y ca-certificates curl gnupg
 mkdir -p /etc/apt/keyrings
@@ -143,7 +143,7 @@ main(await getInstanceIdentity(), process.argv[2]);
 EOF
 # see https://www.npmjs.com/package/@aws-sdk/client-ssm
 # renovate: datasource=npm depName=@aws-sdk/client-ssm
-npm_aws_sdk_client_ssm_version='3.574.0'
+npm_aws_sdk_client_ssm_version='3.759.0'
 cat >package.json <<EOF
 {
     "name": "app",
