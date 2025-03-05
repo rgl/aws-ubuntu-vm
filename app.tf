@@ -140,6 +140,14 @@ resource "aws_iam_instance_profile" "app" {
   role = aws_iam_role.app.name
 }
 
+# see https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-agent.html
+# see https://docs.aws.amazon.com/systems-manager/latest/userguide/setup-instance-permissions.html
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment
+resource "aws_iam_role_policy_attachment" "app_ssm_agent" {
+  role       = aws_iam_role.app.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter
 resource "aws_ssm_parameter" "app_message" {
   name  = "/${aws_iam_instance_profile.app.role}/message"

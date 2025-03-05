@@ -7,3 +7,4 @@ secrets*
 SECRETS*
 *.tmp.png
 *.log
+app-ssh-known-hosts.txt
