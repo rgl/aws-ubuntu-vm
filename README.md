@@ -19,6 +19,7 @@ This will:
       * Get the [Instance Identity Document](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html) from the [EC2 Instance Metadata Service](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html).
       * Get a Parameter from the [Systems Manager Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html).
       * Get the [Instance (IAM) Role Credentials](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#instance-metadata-security-credentials).
+  * Wait for the instance to be ready.
 
 # Usage (on a Ubuntu Desktop)
 
@@ -183,6 +184,15 @@ systemctl status snap.amazon-ssm-agent.amazon-ssm-agent
 journalctl -u snap.amazon-ssm-agent.amazon-ssm-agent
 sudo ssm-cli get-instance-information
 sudo ssm-cli get-diagnostics
+# list all the aws endpoints that the ssm agent uses.
+sudo ssm-cli get-diagnostics \
+  | perl -nle 'print $1 if /([a-z0-9.-]+\.amazonaws\.com)/i' \
+  | sort -u \
+  | while read endpoint; do
+      dig +short a "$endpoint" | sort | while read ip; do
+        echo "$endpoint: $ip"
+      done
+    done
 exit
 ```
 

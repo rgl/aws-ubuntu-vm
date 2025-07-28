@@ -201,3 +201,23 @@ resource "aws_instance" "app" {
     Name = "example-ubuntu"
   }
 }
+
+# see https://developer.hashicorp.com/terraform/language/resources/terraform-data
+resource "terraform_data" "app_ready" {
+  provisioner "local-exec" {
+    interpreter = ["/usr/bin/env", "bash"]
+    command     = "./aws-ssm-remote-exec.sh"
+    environment = {
+      AWS_SSM_SSH_EXEC_EC2_INSTANCE_ID       = aws_instance.app.id
+      AWS_SSM_SSH_EXEC_EC2_INSTANCE_USERNAME = "ubuntu"
+      AWS_SSM_SSH_EXEC_STDIN                 = <<-EOF
+        set -euxo pipefail
+        cloud-init status --long --wait
+      EOF
+    }
+  }
+  depends_on = [
+    aws_eip.app,
+    aws_instance.app,
+  ]
+}
