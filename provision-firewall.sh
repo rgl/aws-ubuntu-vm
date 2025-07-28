@@ -68,17 +68,18 @@ iptables-restore </etc/iptables/rules.v4
 cat >/etc/iptables/rules.v6 <<'EOF'
 *filter
 :INPUT DROP [0:0]
-:FORWARD DROP [0:0]
-:OUTPUT DROP [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+# configure ingress rules.
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p ipv6-icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -p udp --sport 547 --dport 546 -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
 # log and reject.
 -A INPUT -m limit --limit 2/min -j LOG --log-prefix "ip6tables-reject-INPUT " --log-level 4
 -A INPUT -j REJECT --reject-with icmp6-adm-prohibited
-# log and reject.
--A FORWARD -m limit --limit 2/min -j LOG --log-prefix "ip6tables-reject-FORWARD " --log-level 4
--A FORWARD -j REJECT --reject-with icmp6-adm-prohibited
-# log and reject.
--A OUTPUT -m limit --limit 2/min -j LOG --log-prefix "ip6tables-reject-OUTPUT " --log-level 4
--A OUTPUT -j REJECT --reject-with icmp6-adm-prohibited
 COMMIT
 EOF
 ip6tables-restore </etc/iptables/rules.v6

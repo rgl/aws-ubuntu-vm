@@ -24,9 +24,10 @@ resource "aws_key_pair" "admin" {
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/network_interface
 resource "aws_network_interface" "app" {
-  subnet_id       = aws_subnet.public_az_a.id
-  private_ips     = [local.vpc_public_az_a_subnet_app_ip_address]
-  security_groups = [aws_security_group.app.id]
+  subnet_id          = aws_subnet.public_az_a.id
+  private_ips        = [local.vpc_public_az_a_subnet_app_ip_address]
+  security_groups    = [aws_security_group.app.id]
+  ipv6_address_count = 1
   tags = {
     Name = "${var.name_prefix}-app"
   }
@@ -67,6 +68,18 @@ resource "aws_vpc_security_group_ingress_rule" "app_ssh" {
 }
 
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule
+resource "aws_vpc_security_group_ingress_rule" "app_ssh_ipv6" {
+  security_group_id = aws_security_group.app.id
+  ip_protocol       = "tcp"
+  cidr_ipv6         = "::/0"
+  from_port         = 22
+  to_port           = 22
+  tags = {
+    Name = "${var.name_prefix}-app-ssh-ipv6"
+  }
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule
 resource "aws_vpc_security_group_ingress_rule" "app_http" {
   security_group_id = aws_security_group.app.id
   ip_protocol       = "tcp"
@@ -78,6 +91,18 @@ resource "aws_vpc_security_group_ingress_rule" "app_http" {
   }
 }
 
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule
+resource "aws_vpc_security_group_ingress_rule" "app_http_ipv6" {
+  security_group_id = aws_security_group.app.id
+  ip_protocol       = "tcp"
+  cidr_ipv6         = "::/0"
+  from_port         = 80
+  to_port           = 80
+  tags = {
+    Name = "${var.name_prefix}-app-http-ipv6"
+  }
+}
+
 # see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_egress_rule
 resource "aws_vpc_security_group_egress_rule" "app_all" {
   security_group_id = aws_security_group.app.id
@@ -85,6 +110,16 @@ resource "aws_vpc_security_group_egress_rule" "app_all" {
   cidr_ipv4         = "0.0.0.0/0"
   tags = {
     Name = "${var.name_prefix}-app-all"
+  }
+}
+
+# see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_egress_rule
+resource "aws_vpc_security_group_egress_rule" "app_all_ipv6" {
+  security_group_id = aws_security_group.app.id
+  ip_protocol       = "-1"
+  cidr_ipv6         = "::/0"
+  tags = {
+    Name = "${var.name_prefix}-app-all-ipv6"
   }
 }
 

@@ -10,7 +10,8 @@ This will:
   * Configure a Internet Gateway.
 * Create a Systems Manager ([aka SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html#service-naming-history)) Parameter.
 * Create a EC2 Instance.
-  * Assign a Public IP address.
+  * Assign a Public IP IPv4 address.
+  * Assign a Public IP IPv6 address.
   * Assign a IAM Role.
     * Include the [AmazonSSMManagedInstanceCore Policy](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonSSMManagedInstanceCore.html).
   * Initialize with cloud-init.
@@ -148,6 +149,7 @@ After VM initialization is done (check the instance system log for cloud-init en
 
 ```bash
 while ! wget -qO- "http://$(terraform output --raw app_ip_address)/test"; do sleep 3; done
+while ! wget -qO- "http://[$(terraform output --raw app_ipv6_address)]/test"; do sleep 3; done
 ```
 
 Get the instance ssh host public keys, convert them to the knowns hosts format,
@@ -158,7 +160,7 @@ and show their fingerprints:
   "$(terraform output --raw app_instance_id)" \
   | tail -1 \
   | jq -r .sshd_public_keys \
-  | sed "s/^/$(terraform output --raw app_instance_id),$(terraform output --raw app_ip_address) /" \
+  | sed "s/^/$(terraform output --raw app_instance_id),$(terraform output --raw app_ip_address),$(terraform output --raw app_ipv6_address) /" \
   > app-ssh-known-hosts.txt
 ssh-keygen -l -f app-ssh-known-hosts.txt
 ```
@@ -192,7 +194,44 @@ sudo ssm-cli get-diagnostics \
       dig +short a "$endpoint" | sort | while read ip; do
         echo "$endpoint: $ip"
       done
+      dig +short aaaa "$endpoint" | sort | while read ip; do
+        echo "$endpoint: $ip"
+      done
     done
+sudo cat /etc/netplan/50-cloud-init.yaml
+networkctl status
+networkctl status ens5
+ip addr
+ip -4 route
+ip -6 route
+ping -6 -n -c 3 2606:4700:4700::1111    # cloudflare dns.
+ping -6 -n -c 3 2606:4700:4700::1001    # cloudflare dns.
+ping -6 -n -c 3 ff02::1                 # all nodes.   # NB does not work in aws.
+ping -6 -n -c 3 ff02::2                 # all routers. # NB does not work in aws.
+ping -4 -n -c 3 ip6.me
+ping -6 -n -c 3 ip6.me
+dig -4 aaaa ip6.me
+dig -6 aaaa ip6.me @2606:4700:4700::1111
+curl -4 https://ip6.me/api/ # get the vm public ipv4 address.
+curl -6 https://ip6.me/api/ # get the vm public ipv6 address.
+curl http://ip6only.me/api/ # get the vm public ipv6 address.
+ipv6_public_test_url="http://[$(curl -6 -s https://ip6.me/api/ | awk -F, '{print $2}')]/test"
+curl "$ipv6_public_test_url" # try the app public ipv6 endpoint.
+echo "go to https://dnschecker.org/server-headers-check.php and test the app ipv6 url:
+$ipv6_public_test_url"
+exit
+```
+
+Using your ssh client, access using ipv6:
+
+```bash
+ssh \
+  -6 \
+  -o UserKnownHostsFile=app-ssh-known-hosts.txt \
+  "ubuntu@$(terraform output --raw app_ipv6_address)"
+echo $SSH_CLIENT
+echo $SSH_CONNECTION
+curl -6 https://ip6.me/api/
 exit
 ```
 
@@ -273,6 +312,11 @@ make terraform-destroy
       * [Starting a session (SSH)](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html#sessions-start-ssh)
         * [Allow and control permissions for SSH connections through Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-getting-started-enable-ssh-connections.html)
       * [Starting a session (port forwarding)](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html#sessions-start-port-forwarding)
+* IPv6
+  * [IPv6 on AWS](https://docs.aws.amazon.com/whitepapers/latest/ipv6-on-aws/IPv6-on-AWS.html)
+  * [IPv6 support for your VPC](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-migrate-ipv6.html)
+  * [AWS and IPv6](https://www.youtube.com/watch?v=bJK5R_dJCBY)
+  * [Architect and build IPv6 networks on AWS](https://www.youtube.com/watch?v=zRILaf5JeTM)
 
 # Alternatives
 
