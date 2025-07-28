@@ -21,7 +21,7 @@ CHECKPOINT_DISABLE=1 terraform version
 # see https://github.com/aws/aws-cli/tags
 # see https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html#cliv2-linux-install
 # renovate: datasource=github-tags depName=aws/aws-cli
-AWS_VERSION='2.27.48'
+AWS_VERSION='2.27.60'
 aws_url="https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_VERSION}.zip"
 t="$(mktemp -q -d --suffix=.aws)"
 wget -qO "$t/awscli.zip" "$aws_url"
