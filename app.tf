@@ -232,7 +232,7 @@ resource "aws_instance" "app" {
     network_interface_id = aws_network_interface.app.id
   }
   tags = {
-    Name = "example-ubuntu"
+    Name = "${var.name_prefix}-app"
   }
 }
 
