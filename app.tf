@@ -228,9 +228,8 @@ resource "aws_instance" "app" {
     http_endpoint = "enabled"
     http_tokens   = "required"
   }
-  network_interface {
+  primary_network_interface {
     network_interface_id = aws_network_interface.app.id
-    device_index         = 0
   }
   tags = {
     Name = "example-ubuntu"
